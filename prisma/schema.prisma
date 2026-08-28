@@ -109,6 +109,7 @@ model Order {
   updatedAt         DateTime     @updatedAt
   items             OrderItem[]
   payment           Payment?
+  downloads         Download[]
   downloadsReleased Boolean      @default(false)
 
   @@index([userId])

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().email(),
   password: z.string().min(8),
 });
 
@@ -28,18 +28,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = (token.role as "CUSTOMER" | "ADMIN") ?? "CUSTOMER";
       }
       return session;
-    },
-    authorized: async ({ auth, request }) => {
-      const pathname = request.nextUrl.pathname;
-      if (pathname.startsWith("/admin")) {
-        return auth?.user?.role === "ADMIN";
-      }
-
-      if (pathname.startsWith("/minha-conta")) {
-        return Boolean(auth?.user);
-      }
-
-      return true;
     },
   },
   providers: [
