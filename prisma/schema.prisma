@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+  FAILED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  passwordHash  String
+  role          UserRole   @default(CUSTOMER)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  orders        Order[]
+  downloads     Download[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  schoolYear  String
+  subject     String
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([schoolYear])
+  @@index([subject])
+}
+
+model Product {
+  id               String      @id @default(cuid())
+  title            String
+  slug             String      @unique
+  shortDescription String
+  description      String
+  priceInCents     Int
+  pagesCount       Int
+  schoolYear       String
+  subject          String
+  materialType     String
+  coverImageUrl    String
+  previewImageUrls String[]
+  includedItems    String[]
+  pdfStorageKey    String
+  isActive         Boolean     @default(true)
+  categoryId       String
+  category         Category    @relation(fields: [categoryId], references: [id])
+  orderItems       OrderItem[]
+  downloads        Download[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([slug])
+  @@index([schoolYear, subject])
+  @@index([materialType])
+  @@index([priceInCents])
+  @@index([isActive])
+}
+
+model Order {
+  id                   String       @id @default(cuid())
+  userId               String
+  user                 User         @relation(fields: [userId], references: [id])
+  status               OrderStatus  @default(PENDING)
+  subtotalInCents      Int
+  discountInCents      Int          @default(0)
+  totalInCents         Int
+  couponId             String?
+  coupon               Coupon?      @relation(fields: [couponId], references: [id])
+  paymentConfirmedAt   DateTime?
+  items                OrderItem[]
+  payment              Payment?
+  downloads            Download[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  unitPriceInCents Int
+  quantity        Int      @default(1)
+
+  @@index([orderId])
+  @@index([productId])
+  @@unique([orderId, productId])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String        @unique
+  order              Order         @relation(fields: [orderId], references: [id])
+  gateway            String
+  gatewayChargeId    String        @unique
+  status             PaymentStatus @default(PENDING)
+  amountInCents      Int
+  pixQrCode          String
+  pixCopyPaste       String
+  paidAt             DateTime?
+  rawResponse        Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([status])
+  @@index([gatewayChargeId])
+}
+
+model Coupon {
+  id                 String      @id @default(cuid())
+  code               String      @unique
+  type               CouponType
+  value              Int
+  maxUses            Int?
+  usedCount          Int         @default(0)
+  isActive           Boolean     @default(true)
+  validUntil         DateTime?
+  orders             Order[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([code])
+  @@index([isActive, validUntil])
+}
+
+model Download {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, productId])
+  @@index([orderId])
+  @@index([createdAt])
+}
